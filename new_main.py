@@ -5,7 +5,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from new_responses import get_response
-# code
+
 # Load the Discord token from the environment variables
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
