@@ -160,7 +160,7 @@ async def challenge_info(interaction: discord.Interaction, flag_id: str):
 async def submit(interaction: discord.Interaction, flag_id: str):
     await interaction.response.defer(ephemeral=True)
     if (interaction.channel.id not in trail_channel) and (interaction.channel.id not in channels_permitted):
-        await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        await interaction.followup.send("This channel is not permitted.", ephemeral=True)
         return
     # Check if the channel is permitted
     # if interaction.channel.id not in channels_permitted:
