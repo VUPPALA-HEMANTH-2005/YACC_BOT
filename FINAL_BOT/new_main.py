@@ -10,8 +10,9 @@ from new_responses import get_response
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
+# 1286287432542847006
 # Define the permitted channels
-channels_permitted = {1286287432542847006}
+channels_not_permitted = {1286287432542847006, 1290344770442629183}
 
 # Create the bot instance with all intents
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
@@ -24,66 +25,48 @@ async def on_ready():
     await bot.tree.sync()  # Sync slash commands
     print(f'{bot.user} is now running! Slash commands have been synced.')
 
-
+#
 @bot.tree.command(name='whatscooking', description='first free flag')
-async def submit(interaction: discord.Interaction, flag_id: str):
-    await interaction.response.defer(ephemeral=True)
-    # Check if the channel is permitted
-    if interaction.channel.id not in channels_permitted:
-        # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
-        await interaction.followup.send("This channel is not permitted.", ephemeral=True)
-        return
-
-    if flag_id != '1C0':
-        await interaction.followup.send("Invalid challenge ID. the correct flag_id is 1C0", ephemeral=True)
-        return
-
-    await interaction.followup.send("Check your DMs to submit the flag.", ephemeral=True)
+async def whatscooking(interaction: discord.Interaction):
+    # if interaction.channel.id not in channels_not_permitted:
+    #     # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+    #     await interaction.followup.send("This channel is not permitted.", ephemeral=True)
+    #     return
 
     try:
-        # Send a DM to the user asking for the flag input
-        await interaction.user.send(f"Please enter the flag for challenge `{flag_id}`:")
-
-        # Define a check function to ensure we only process the user's response in DM
-        def check(msg):
-            return msg.author == interaction.user and isinstance(msg.channel, discord.DMChannel)
-
-        # Wait for the user’s response in their DM (timeout after 5 minutes)
-        msg = await bot.wait_for("message", check=check, timeout=300)  # Timeout after 5 minutes
-
-        # Validate the flag
-        response = get_response(interaction, challenge_id=flag_id, flag=msg.content)
-
-        # Send the validation result back to the user in their DM
-        await interaction.user.send(response)
-
-    except discord.Forbidden:
-        # Handle if the bot cannot send a DM due to user privacy settings
-        await interaction.followup.send("I couldn't send you a DM. Please check your privacy settings.", ephemeral=True)
-    except asyncio.TimeoutError:
-        # Handle if the user doesn't respond within the timeout
-        await interaction.user.send("Flag submission timed out. Please try again.")
+        demo = 'use /submit command with flag_id as 1C0 after you get a dm submit flag{H4ck_th6_m4tr1x}'
+        await interaction.response.send_message(demo, ephemeral=True)
+        return
+    except Exception as e:
+        await interaction.response.send_message(f'exception {e}', ephemeral=True)
+        return
 
 
 # Slash command for /help
 @bot.tree.command(name='help', description='Displays available commands')
 async def help_command(interaction: discord.Interaction):
     help_message = (
-        "/leaderboard - Points table for top scores\n"
-        "/challengeleaderboard <challenge-id> - Scoreboard for the particular challenge\n"
-        "/myscore - Individual score\n"
-        "/myhacks - Solved/tried challenges\n"
-        "/challenges - List of active problems\n"
-        "/submit <challenge-id> <flag> - Let the user submit flag\n"
-        "/info <challenge-id> - Gives the description of challenge name"
+        "🆘 Command List\n"
+        "─────────────────────────────\n"
+        "✨ /leaderboard - Points table for top scores! See who’s leading the charge!\n\n"
+        "📊 /challengeleaderboard <flag-id> - Scoreboard for a particular challenge! Check out how everyone’s performing!\n\n"
+        "🏆 /myscore - Individual score report! Find out how you stack up against the competition!\n\n"
+        "📝 /myhacks - List of challenges you’ve solved or tried! Review your victories and learn from your attempts!\n\n"
+        "📜 /challenges - List of active problems! Discover the challenges waiting for you to conquer!\n\n"
+        "🚀 /submit <flag-id> - Submit your flag for evaluation! Give it your best shot!\n\n"
+        "ℹ️ /info <flag-id> - Get detailed descriptions of the challenges! Learn what it takes to solve them!\n"
+        "─────────────────────────────\n"
+        "🎉 Dive in and start exploring! If you have any questions, just ask!"
     )
-    await interaction.response.send_message(help_message)
+
+    await interaction.response.send_message(help_message, ephemeral=True)
+    return
 
 
 # Slash command for overall leaderboard
 @bot.tree.command(name='leaderboard', description='Display the overall leaderboard')
 async def leaderboard(interaction: discord.Interaction):
-    if interaction.channel.id not in channels_permitted:
+    if interaction.channel.id in channels_not_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -97,70 +80,85 @@ async def leaderboard(interaction: discord.Interaction):
 async def myhacks_command(interaction: discord.Interaction):
     # user = interaction.user.name
     # Assuming handle_myhacks_command is already defined in new_responses.py
-    response = get_response(interaction)
-    await interaction.response.send_message(response)
+    # Check if the channel is permitted
+    if interaction.channel.id in channels_not_permitted:
+        # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        return
+    else:
+        response = get_response(interaction)
+        await interaction.response.send_message(response)
+        return
 
 
 # Slash command for specific challenge leaderboard
 @bot.tree.command(name='challengeleaderboard', description='Display leaderboard for a specific challenge')
-async def challenge_leaderboard(interaction: discord.Interaction, challenge_id: str):
-    if interaction.channel.id not in channels_permitted:
+async def challenge_leaderboard(interaction: discord.Interaction, flag_id: str):
+    if interaction.channel.id in channels_not_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
     # Retrieve the challenge leaderboard response
-    response = get_response(interaction, challenge_id=challenge_id)
+    response = get_response(interaction, challenge_id=flag_id)
     await interaction.response.send_message(response)
+    return
 
 
 # Slash command for the user's individual score
 @bot.tree.command(name='myscore', description='Get your individual score')
 async def my_score(interaction: discord.Interaction):
-    if interaction.channel.id not in channels_permitted:
+    if interaction.channel.id in channels_not_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
     # Retrieve the user's score using get_response
     response = get_response(interaction)
     await interaction.response.send_message(response)
+    return
 
 
 # Slash command for listing all active challenges
 @bot.tree.command(name='challenges', description='Get the list of active challenges')
 async def challenges(interaction: discord.Interaction):
-    if interaction.channel.id not in channels_permitted:
+    if interaction.channel.id in channels_not_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
     # Retrieve the list of challenges
     response = get_response(interaction)
     await interaction.response.send_message(response)
+    return
 
 
 @bot.tree.command(name='info', description='Exclusive information regarding a question')
-async def challenge_info(interaction: discord.Interaction, challenge_id: str):
-    if interaction.channel.id not in channels_permitted:
+async def challenge_info(interaction: discord.Interaction, flag_id: str):
+    if interaction.channel.id in channels_not_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
+    try:
+        # Acknowledge the interaction immediately with a "thinking" response
+        # await interaction.response.defer(thinking=True)
 
-    # Acknowledge the interaction immediately with a "thinking" response
-    await interaction.response.defer(thinking=True)
+        # Retrieve the list of challenges
+        response = get_response(interaction, challenge_id=flag_id)
+        await interaction.response.send_message(response)
+        return
+        # Send the actual response as a follow-up message
+        # await interaction.followup.send(response)
+    except Exception as e:
+        await interaction.response.send_message(f'{e}')
+        return
 
-    # Retrieve the list of challenges
-    response = get_response(interaction, challenge_id=challenge_id)
-
-    # Send the actual response as a follow-up message
-    await interaction.followup.send(response)
 
 
 @bot.tree.command(name='submit', description='Submit a flag for a challenge')
 async def submit(interaction: discord.Interaction, flag_id: str):
     await interaction.response.defer(ephemeral=True)
     # Check if the channel is permitted
-    if interaction.channel.id not in channels_permitted:
-        # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
-        await interaction.followup.send("This channel is not permitted.", ephemeral=True)
-        return
+    # if interaction.channel.id not in channels_not_permitted:
+    #     # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+    #     await interaction.followup.send("This channel is not permitted.", ephemeral=True)
+    #     return
 
     # Check if the challenge ID exists
     challenge_exists = get_response(interaction, challenge_id=flag_id, text="is_valid_challenge_id")
@@ -195,6 +193,10 @@ async def submit(interaction: discord.Interaction, flag_id: str):
 
         # Send the validation result back to the user in their DM
         await interaction.user.send(response)
+        print(response[0:8])
+        if response[0:8] == "Congrats":
+            announce_in_group = f"Congrats {interaction.user.name} for guessing the {flag_id} right! 🎉"
+            await interaction.followup.send(announce_in_group, ephemeral=True)
 
     except discord.Forbidden:
         # Handle if the bot cannot send a DM due to user privacy settings
@@ -204,15 +206,15 @@ async def submit(interaction: discord.Interaction, flag_id: str):
         await interaction.user.send("Flag submission timed out. Please try again.")
 
 
-@bot.tree.command(name='deletemyinfo', description='Delete your information from the database')
-async def delete_my_info(interaction: discord.Interaction):
-    if interaction.channel.id not in channels_permitted:
-        await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
-        return
-
-    # Handle user info deletion
-    response = get_response(interaction)
-    await interaction.response.send_message(response)
+# @bot.tree.command(name='deletemyinfo', description='Delete your information from the database')
+# async def delete_my_info(interaction: discord.Interaction):
+#     if interaction.channel.id not in channels_not_permitted:
+#         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+#         return
+#
+#     # Handle user info deletion
+#     response = get_response(interaction)
+#     await interaction.response.send_message(response)
 
 
 # Main function to run the bot

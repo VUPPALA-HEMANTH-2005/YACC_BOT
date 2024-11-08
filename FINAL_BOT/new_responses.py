@@ -60,7 +60,8 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
 
     elif command_name == 'myscore':
         score = get_user_score(interaction.user.name)
-        return f"{interaction.user.name}, your current score is: {score} points."
+        return score
+        # return f"{interaction.user.name}, your current score is: {score} points."
 
     elif command_name == 'challenges':
         challenges = get_all_challenges()
@@ -81,6 +82,11 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
                     return "status is closed."
                 else:
                     return
+            if challenge_id == '1C0':
+                if flag == 'flag{H4ck_th6_m4tr1x}':
+                    return f'correct submission'
+                else:
+                    return 'wrong submission'
             # Call the submit_flag function
             submission_result, is_correct, max_points = submit_flag(interaction.user.name, challenge_id, flag)
             print(f'responses {flag}')
@@ -107,7 +113,7 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
                         if added_to_leaderboard != "Added to leaderboard.":
                             print(f'error in add_to_leaderboard function')
                         submission_order = len(leaderboard) + 1
-                        return f"🎉 Congrats {interaction.user.name}, you guessed it right! 🎉\n" \
+                        return f"Congrats {interaction.user.name}, you guessed it right! 🎉\n" \
                                f"You are submission number {submission_order} for this challenge."
                     else:
                         # Random incorrect flag messages

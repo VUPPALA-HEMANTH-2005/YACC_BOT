@@ -329,21 +329,40 @@ def add_to_leaderboard(challenge_id: str, max_points: int, user_name: str):
 def get_leaderboard(challenge_id: str):
     if not is_valid_challenge_id(challenge_id):
         return "Invalid challenge ID."
-
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT user_name, points
-        FROM leaderboard_table
-        WHERE challenge_id = %s
-        ORDER BY submission_order ASC LIMIT 5
-        """,
-        (challenge_id,)
-    )
-    leaderboard = cursor.fetchall()
-    conn.close()
-    return leaderboard if leaderboard else []
+    try:
+
+        cursor.execute(
+            """
+            SELECT user_name, points
+            FROM leaderboard_table
+            WHERE challenge_id = %s
+            ORDER BY submission_order ASC LIMIT 5
+            """,
+            (challenge_id,)
+        )
+        leaderboard = cursor.fetchall()
+        if not leaderboard:
+            return []
+        else:
+            leaderboard_message = "🏆 SQL Injection Fun Challenge Leaderboard\n"
+        leaderboard_message += "─────────────────────────────\n"
+
+        for entry in leaderboard:
+            user_name = entry[0]  # Assuming user_name is in the first column
+            points = entry[1]     # Assuming points are in the second column
+            leaderboard_message += f"{user_name}     | 🏅 {points} pts\n"
+
+        leaderboard_message += "─────────────────────────────"
+
+        return leaderboard_message
+    except Exception as e:
+        return f'exception occurred in getting the leaderboard {e}'
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 def get_overall_leaderboard():
@@ -366,12 +385,29 @@ def get_overall_leaderboard():
 def get_user_score(user_name: str):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT SUM(points) FROM leaderboard_table WHERE user_name = %s", (user_name,)
-    )
-    total_score = cursor.fetchone()[0] or 0
-    conn.close()
-    return total_score
+    try:
+        cursor.execute(
+            "SELECT SUM(points),correct_submissions, incorrect_submission FROM leaderboard_table WHERE user_name = %s", (user_name,)
+        )
+        # total_score = cursor.fetchone()[0] or 0
+        total_score, crt_sub, incrt_sub = cursor.fetchone()
+        response = score_report = (
+                f"🌟 [Username] Score Report 🌟\n"
+                "─────────────────────────────\n"
+                f"Participant:{user_name} "
+                f"Total Points: {total_score} pts! 🎉\n"
+                f"Correct Flags: {crt_sub} 🔥\n"
+                f"Incorrect Flags: {incrt_sub} 🤦‍️\n\n"
+                "Get ready to level up! and Keep those flags coming! ✨\n"
+                "─────────────────────────────"
+            )
+        return response
+    except Exception as e:
+        conn.rollback()
+        return f"Error getting user score: {e}"
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def get_challenge_info(challenge_id: str):
