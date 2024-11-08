@@ -12,7 +12,8 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 # 1286287432542847006
 # Define the permitted channels
-channels_not_permitted = {1286287432542847006, 1290344770442629183}
+channels_permitted = {1290344770442629183}
+trail_channel = {1286287432542847006}
 
 # Create the bot instance with all intents
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
@@ -28,13 +29,13 @@ async def on_ready():
 #
 @bot.tree.command(name='whatscooking', description='first free flag')
 async def whatscooking(interaction: discord.Interaction):
-    # if interaction.channel.id not in channels_not_permitted:
-    #     # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
-    #     await interaction.followup.send("This channel is not permitted.", ephemeral=True)
-    #     return
+    if (interaction.channel.id not in channels_permitted) and (interaction.channel.id not in trail_channel):
+        # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        return
 
     try:
-        demo = 'use /submit command with flag_id as 1C0 after you get a dm submit flag{H4ck_th6_m4tr1x}'
+        demo = 'Here is your flag `flag{H4ck_th6_m4tr1x}`. Type `/submit 1C0` to submit'
         await interaction.response.send_message(demo, ephemeral=True)
         return
     except Exception as e:
@@ -45,6 +46,10 @@ async def whatscooking(interaction: discord.Interaction):
 # Slash command for /help
 @bot.tree.command(name='help', description='Displays available commands')
 async def help_command(interaction: discord.Interaction):
+    if (interaction.channel.id not in channels_permitted) and (interaction.channel.id not in trail_channel):
+        # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        return
     help_message = (
         "🆘 Command List\n"
         "─────────────────────────────\n"
@@ -66,7 +71,7 @@ async def help_command(interaction: discord.Interaction):
 # Slash command for overall leaderboard
 @bot.tree.command(name='leaderboard', description='Display the overall leaderboard')
 async def leaderboard(interaction: discord.Interaction):
-    if interaction.channel.id in channels_not_permitted:
+    if interaction.channel.id not in trail_channel:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -81,7 +86,7 @@ async def myhacks_command(interaction: discord.Interaction):
     # user = interaction.user.name
     # Assuming handle_myhacks_command is already defined in new_responses.py
     # Check if the channel is permitted
-    if interaction.channel.id in channels_not_permitted:
+    if interaction.channel.id not in trail_channel:
         # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
@@ -94,7 +99,7 @@ async def myhacks_command(interaction: discord.Interaction):
 # Slash command for specific challenge leaderboard
 @bot.tree.command(name='challengeleaderboard', description='Display leaderboard for a specific challenge')
 async def challenge_leaderboard(interaction: discord.Interaction, flag_id: str):
-    if interaction.channel.id in channels_not_permitted:
+    if interaction.channel.id not in trail_channel:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -107,7 +112,7 @@ async def challenge_leaderboard(interaction: discord.Interaction, flag_id: str):
 # Slash command for the user's individual score
 @bot.tree.command(name='myscore', description='Get your individual score')
 async def my_score(interaction: discord.Interaction):
-    if interaction.channel.id in channels_not_permitted:
+    if interaction.channel.id not in trail_channel:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -120,7 +125,7 @@ async def my_score(interaction: discord.Interaction):
 # Slash command for listing all active challenges
 @bot.tree.command(name='challenges', description='Get the list of active challenges')
 async def challenges(interaction: discord.Interaction):
-    if interaction.channel.id in channels_not_permitted:
+    if interaction.channel.id not in trail_channel:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -132,7 +137,7 @@ async def challenges(interaction: discord.Interaction):
 
 @bot.tree.command(name='info', description='Exclusive information regarding a question')
 async def challenge_info(interaction: discord.Interaction, flag_id: str):
-    if interaction.channel.id in channels_not_permitted:
+    if interaction.channel.id not in trail_channel:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
     try:
@@ -154,8 +159,11 @@ async def challenge_info(interaction: discord.Interaction, flag_id: str):
 @bot.tree.command(name='submit', description='Submit a flag for a challenge')
 async def submit(interaction: discord.Interaction, flag_id: str):
     await interaction.response.defer(ephemeral=True)
+    if (interaction.channel.id not in trail_channel) and (interaction.channel.id not in channels_permitted):
+        await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        return
     # Check if the channel is permitted
-    # if interaction.channel.id not in channels_not_permitted:
+    # if interaction.channel.id not in channels_permitted:
     #     # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
     #     await interaction.followup.send("This channel is not permitted.", ephemeral=True)
     #     return
@@ -208,7 +216,7 @@ async def submit(interaction: discord.Interaction, flag_id: str):
 
 # @bot.tree.command(name='deletemyinfo', description='Delete your information from the database')
 # async def delete_my_info(interaction: discord.Interaction):
-#     if interaction.channel.id not in channels_not_permitted:
+#     if interaction.channel.id not in channels_permitted:
 #         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
 #         return
 #
