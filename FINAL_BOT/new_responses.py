@@ -11,8 +11,20 @@ from new_db_ import has_user_answered_challenge, check_challenge_status
 def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
     # Use the command name from the interaction
     command_name = interaction.command.name
+    incorrect_flag_responses = [
+                            f"❌ Oops, {interaction.user.name}! That’s not the correct flag 😬",
+                            f"❌ Close, {interaction.user.name}, but not quite! That flag’s a miss. 😅",
+                            f"⚠️ Uh-oh, {interaction.user.name}! That flag doesn’t fit. 👀",
+                            f"💀 Mission failed, {interaction.user.name}! That flag doesn’t respawn here. 🕹️",
+                            f"❌ Whoops, {interaction.user.name}! That flag is so far off it might be from another planet! 🪐"
+                        ]
     print(f'command name {command_name}')
     # Handle different commands based on the name
+    if command_name == 'whatscooking':
+        if challenge_id == '1C0' and flag == 'H4ck_th6_m4tr1x':
+            return f"🎉 Congrats {interaction.user.name}, you guessed it right! 🎉"
+        else:
+            return random.choice(incorrect_flag_responses)
     if command_name == 'leaderboard':
         overall_leaderboard = get_overall_leaderboard()
         if overall_leaderboard:
@@ -99,13 +111,7 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
                                f"You are submission number {submission_order} for this challenge."
                     else:
                         # Random incorrect flag messages
-                        incorrect_flag_responses = [
-                            f"❌ Oops, {interaction.user.name}! That’s not the correct flag 😬",
-                            f"❌ Close, {interaction.user.name}, but not quite! That flag’s a miss. 😅",
-                            f"⚠️ Uh-oh, {interaction.user.name}! That flag doesn’t fit. 👀",
-                            f"💀 Mission failed, {interaction.user.name}! That flag doesn’t respawn here. 🕹️",
-                            f"❌ Whoops, {interaction.user.name}! That flag is so far off it might be from another planet! 🪐"
-                        ]
+
                         return random.choice(incorrect_flag_responses)
             else:
                 pass

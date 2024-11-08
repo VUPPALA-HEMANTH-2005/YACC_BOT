@@ -25,6 +25,46 @@ async def on_ready():
     print(f'{bot.user} is now running! Slash commands have been synced.')
 
 
+@bot.tree.command(name='whatscooking', description='first free flag')
+async def submit(interaction: discord.Interaction, flag_id: str):
+    await interaction.response.defer(ephemeral=True)
+    # Check if the channel is permitted
+    if interaction.channel.id not in channels_permitted:
+        # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
+        await interaction.followup.send("This channel is not permitted.", ephemeral=True)
+        return
+
+    if flag_id != '1C0':
+        await interaction.followup.send("Invalid challenge ID. the correct flag_id is 1C0", ephemeral=True)
+        return
+
+    await interaction.followup.send("Check your DMs to submit the flag.", ephemeral=True)
+
+    try:
+        # Send a DM to the user asking for the flag input
+        await interaction.user.send(f"Please enter the flag for challenge `{flag_id}`:")
+
+        # Define a check function to ensure we only process the user's response in DM
+        def check(msg):
+            return msg.author == interaction.user and isinstance(msg.channel, discord.DMChannel)
+
+        # Wait for the user’s response in their DM (timeout after 5 minutes)
+        msg = await bot.wait_for("message", check=check, timeout=300)  # Timeout after 5 minutes
+
+        # Validate the flag
+        response = get_response(interaction, challenge_id=flag_id, flag=msg.content)
+
+        # Send the validation result back to the user in their DM
+        await interaction.user.send(response)
+
+    except discord.Forbidden:
+        # Handle if the bot cannot send a DM due to user privacy settings
+        await interaction.followup.send("I couldn't send you a DM. Please check your privacy settings.", ephemeral=True)
+    except asyncio.TimeoutError:
+        # Handle if the user doesn't respond within the timeout
+        await interaction.user.send("Flag submission timed out. Please try again.")
+
+
 # Slash command for /help
 @bot.tree.command(name='help', description='Displays available commands')
 async def help_command(interaction: discord.Interaction):
