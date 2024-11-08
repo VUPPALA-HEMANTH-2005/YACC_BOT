@@ -4,5 +4,4 @@
 /.env
 /pyvenv.cfg
 /BEGINNING
-/database.py
-/new_main.py
+
