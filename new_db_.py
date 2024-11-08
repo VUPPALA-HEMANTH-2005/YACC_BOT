@@ -169,7 +169,7 @@ def check_challenge_status(challenge_id):
 
 def submit_flag(user_name: str, challenge_id: str, flag: str):
     if not is_valid_challenge_id(challenge_id):
-        return "Invalid challenge ID.", None
+        return "Invalid challenge ID.", None, None
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -198,11 +198,11 @@ def submit_flag(user_name: str, challenge_id: str, flag: str):
         result = cursor.fetchone()
         print(result)
         if not result:
-            return "Challenge not found.", None
+            return "Challenge not found.", None, None
 
         answer, status, max_points, first_correct_time = result
         if status != 1:
-            return "Challenge is currently closed.", None
+            return "Challenge is currently closed.", None, None
 
         print(answer, status, max_points, first_correct_time)
         # max_points = datetime.time
@@ -281,18 +281,18 @@ def submit_flag(user_name: str, challenge_id: str, flag: str):
 
         conn.commit()
         print('submit function done')
-        return "Flag submission recorded successfully.", is_correct
+        return "Flag submission recorded successfully.", is_correct, max_points
 
     except Exception as e:
         conn.rollback()
-        return f"An error occurred in submit_flag function: {e}", None
+        return f"An error occurred in submit_flag function: {e}", None, None
 
     finally:
         cursor.close()
         conn.close()
 
 
-def add_to_leaderboard(challenge_id: str, user_name: str):
+def add_to_leaderboard(challenge_id: str, max_points: int, user_name: str):
     if not is_valid_challenge_id(challenge_id):
         return "Invalid challenge ID."
 
@@ -302,7 +302,7 @@ def add_to_leaderboard(challenge_id: str, user_name: str):
     try:
         # cursor.execute("SELECT max_points FROM challenges_table WHERE challenge_id = %s", (challenge_id,))
         # max_points = cursor.fetchone()[0]
-        max_points = calculate_score(challenge_id=challenge_id)
+        # max_points = calculate_score(challenge_id=challenge_id)
         cursor.execute("SELECT COUNT(*) + 1 FROM leaderboard_table WHERE challenge_id = %s", (challenge_id,))
         submission_order = cursor.fetchone()[0]
 

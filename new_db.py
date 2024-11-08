@@ -25,7 +25,25 @@ def is_database_empty():
             return count == 0  # Returns True if the table is empty
 
 
+def is_valid_challenge_id(challenge_id: str) -> bool:
+    """
+    Checks if a given challenge_id exists in the challenges table.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM challenges WHERE challenge_id = %s", (challenge_id,))
+    result = cursor.fetchone()
+    # print(f"Debug: challenge_id check result for {challenge_id} is {result}")
+
+    exists = result is not None
+    cursor.close()
+    conn.close()
+    return exists
+
+
 def submit_flag(user_name: str, challenge_id: str, flag: str):
+    if not is_valid_challenge_id(challenge_id):
+        return "Invalid challenge ID."
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -43,7 +61,7 @@ def submit_flag(user_name: str, challenge_id: str, flag: str):
 
         if status != 1:
             return "Challenge is currently closed."
-
+        print(f'db {flag}, {answer}')
         # Check if the submitted flag is correct
         is_correct = (flag == answer)
 
@@ -97,7 +115,7 @@ def submit_flag(user_name: str, challenge_id: str, flag: str):
             INSERT INTO score (username, challenge_id, score)
             VALUES (%s, %s, %s)
             ON CONFLICT (username, challenge_id)
-            DO UPDATE SET score = score + EXCLUDED.score
+            DO UPDATE SET score.score = score.score + EXCLUDED.score
             """,
             (user_name, challenge_id, max_points if is_correct else 0)
         )
@@ -112,9 +130,110 @@ def submit_flag(user_name: str, challenge_id: str, flag: str):
     finally:
         cursor.close()
         conn.close()
+# def submit_flag(user_name: str, challenge_id: str, flag: str):
+#     if not is_valid_challenge_id(challenge_id):
+#         return "Invalid challenge ID."
+#
+#     conn = get_db_connection()
+#     cursor = conn.cursor()
+#
+#     try:
+#         # Ensure user exists or insert if new
+#         cursor.execute(
+#             """
+#             INSERT INTO users (user_name, last_active, points, rank, correct_submissions, incorrect_submissions)
+#             VALUES (%s, NOW(), 0, 0, 0, 0)
+#             ON CONFLICT (user_name) DO NOTHING
+#             """,
+#             (user_name,)
+#         )
+#
+#         # Check challenge status and answer
+#         cursor.execute(
+#             "SELECT answer, status, max_points FROM challenges WHERE challenge_id = %s",
+#             (challenge_id,)
+#         )
+#         result = cursor.fetchone()
+#         if not result:
+#             return "Challenge not found."
+#
+#         answer, status, max_points = result
+#
+#         if status != 1:
+#             return "Challenge is currently closed."
+#
+#         is_correct = (flag == answer)
+#
+#         # Record submission
+#         cursor.execute(
+#             """
+#             INSERT INTO submissions (user_name, challenge_id, time, flag_submitted, verdict, points_awarded)
+#             VALUES (%s, %s, NOW(), %s, %s, %s) RETURNING id
+#             """,
+#             (user_name, challenge_id, flag, is_correct, max_points if is_correct else 0)
+#         )
+#         submission_id = cursor.fetchone()[0]
+#
+#         # Update leaderboard if correct
+#         if is_correct:
+#             cursor.execute(
+#                 "SELECT COUNT(*) + 1 FROM leaderboard WHERE challenge_id = %s",
+#                 (challenge_id,)
+#             )
+#             submission_order = cursor.fetchone()[0]
+#
+#             cursor.execute(
+#                 """
+#                 INSERT INTO leaderboard (challenge_id, user_name, submission_order, points)
+#                 VALUES (%s, %s, %s, %s)
+#                 """,
+#                 (challenge_id, user_name, submission_order, max_points)
+#             )
+#
+#             # Update user stats
+#             cursor.execute(
+#                 """
+#                 UPDATE users
+#                 SET points = points + %s, correct_submissions = correct_submissions + 1,
+#                     last_active = NOW()
+#                 WHERE user_name = %s
+#                 """,
+#                 (max_points, user_name)
+#             )
+#         else:
+#             # Increment incorrect submissions count
+#             cursor.execute(
+#                 "UPDATE users SET incorrect_submissions = incorrect_submissions + 1, last_active = NOW() WHERE user_name = %s",
+#                 (user_name,)
+#             )
+#
+#         # Update score table
+#         cursor.execute(
+#             """
+#             INSERT INTO score (username, challenge_id, score)
+#             VALUES (%s, %s, %s)
+#             ON CONFLICT (username, challenge_id)
+#             DO UPDATE SET score = score + EXCLUDED.score
+#             """,
+#             (user_name, challenge_id, max_points if is_correct else 0)
+#         )
+#
+#         conn.commit()
+#         return "Flag submission recorded successfully."
+#
+#     except Exception as e:
+#         conn.rollback()
+#         return f"An error occurred: {e}"
+#
+#     finally:
+#         cursor.close()
+#         conn.close()
 
 
 def add_to_leaderboard(challenge_id: str, user_name: str):
+    if not is_valid_challenge_id(challenge_id):
+        return "Invalid challenge ID."
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -147,7 +266,11 @@ def add_to_leaderboard(challenge_id: str, user_name: str):
         cursor.close()
         conn.close()
 
+
 def get_leaderboard(challenge_id: str):
+    if not is_valid_challenge_id(challenge_id):
+        return "Invalid challenge ID."
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -193,6 +316,9 @@ def get_user_score(user_name: str):
 
 
 def get_challenge_info(challenge_id: str):
+    if not is_valid_challenge_id(challenge_id):
+        return "Invalid challenge ID."
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -290,6 +416,7 @@ def delete_user_info(user_name: str):
         cursor.execute("DELETE FROM leaderboard WHERE user_name = %s", (user_name,))
         cursor.execute("DELETE FROM submissions WHERE user_name = %s", (user_name,))
         cursor.execute("DELETE FROM users WHERE user_name = %s", (user_name,))
+        cursor.execute("DELETE FROM score WHERE user_name = %s", (user_name,))
         conn.commit()
 
     except Exception as e:

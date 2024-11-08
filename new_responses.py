@@ -70,7 +70,7 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
                 else:
                     return
             # Call the submit_flag function
-            submission_result, is_correct = submit_flag(interaction.user.name, challenge_id, flag)
+            submission_result, is_correct, max_points = submit_flag(interaction.user.name, challenge_id, flag)
             print(f'responses {flag}')
             print(f'responses {submission_result}')
             if submission_result == "Challenge not found.":
@@ -91,7 +91,7 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
                         return "Your guess is wrong now but, You've already guessed this question correctly! "
                 else:
                     if is_correct:
-                        added_to_leaderboard = add_to_leaderboard(challenge_id=challenge_id, user_name=interaction.user.name)
+                        added_to_leaderboard = add_to_leaderboard(challenge_id=challenge_id, max_points=max_points, user_name=interaction.user.name)
                         if added_to_leaderboard != "Added to leaderboard.":
                             print(f'error in add_to_leaderboard function')
                         submission_order = len(leaderboard) + 1
