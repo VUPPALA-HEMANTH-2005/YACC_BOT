@@ -28,17 +28,29 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
     if command_name == 'leaderboard':
         overall_leaderboard = get_overall_leaderboard()
         if overall_leaderboard:
-            return '\n'.join([f"{i + 1}. {entry[0]} - {entry[1]} points" for i, entry in enumerate(overall_leaderboard)])
+            return overall_leaderboard
+            # return '\n'.join([f"{i + 1}. {entry[0]} - {entry[1]} points" for i, entry in enumerate(overall_leaderboard)])
         else:
             return 'No scores available yet.'
 
     elif command_name == 'challengeleaderboard':
         if challenge_id:
-            leaderboard = get_leaderboard(challenge_id)
+            leaderboard,challenge_name = get_leaderboard(challenge_id)
             if leaderboard == "Invalid challenge ID.":
-                return "The specified challenge ID does not exist. Please verify the challenge ID."
+                return "The specified flag ID does not exist. Please verify the flag ID."
             elif leaderboard:
-                return leaderboard
+                leaderboard_message = f"🏆 {challenge_name}\n"
+                leaderboard_message += "─────────────────────────────\n"
+
+                for entry in leaderboard:
+                    user_name = entry[0]  # Assuming user_name is in the first column
+                    points = entry[1]     # Assuming points are in the second column
+                    leaderboard_message += f"{user_name}     | 🏅 {points} pts\n"
+
+                leaderboard_message += "─────────────────────────────"
+
+                return leaderboard_message
+                # return leaderboard
             else:
                 return 'No one has guessed the correct answer yet.'
         return 'Challenge ID not provided.'
@@ -70,34 +82,40 @@ def get_response(interaction, challenge_id=None, flag=None, text=None) -> str:
     elif command_name == 'info':
         challenge_info = get_challenge_info(challenge_id)
         if challenge_info == "Invalid challenge ID.":
-            return "The specified challenge ID is invalid. Please check and try again."
+            return "The specified flag ID is invalid. Please check and try again."
         return challenge_info
 
     elif command_name == 'submit':
         try:
             if text == 'is_valid_challenge_id':
                 if not is_valid_challenge_id(challenge_id):
-                    return "Invalid challenge ID."
+                    return "Invalid flag ID."
                 elif not check_challenge_status(challenge_id=challenge_id):
                     return "status is closed."
                 else:
-                    return
-            if challenge_id == '1C0':
-                if flag == 'flag{H4ck_th6_m4tr1x}':
-                    return f'correct submission'
+                    return 'UNKNOWN'
+            # if challenge_id == '1C0':
+            #     if flag == 'flag{H4ck_th6_m4tr1x}':
+            #         return f'correct submission'
+            #     else:
+            #         return 'wrong submission'
+            if text == 'did_already_submitted':
+                if has_user_answered_challenge(user_name=interaction.user.name, challenge_id=challenge_id):
+                    return 'True'
                 else:
-                    return 'wrong submission'
+                    return 'False'
+
             # Call the submit_flag function
             submission_result, is_correct, max_points = submit_flag(interaction.user.name, challenge_id, flag)
             print(f'responses {flag}')
             print(f'responses {submission_result}')
             if submission_result == "Challenge not found.":
-                return "The specified challenge ID does not exist. Please verify the challenge ID."
+                return "The specified flag ID does not exist. Please verify the flag ID."
             elif submission_result == "Challenge is currently closed.":
                 return f"⚠️ Sorry, {interaction.user.name}, but this challenge is currently closed for submissions."
             elif submission_result == "Flag submission recorded successfully.":
                 print(f'start')
-                leaderboard = get_leaderboard(challenge_id)
+                leaderboard, challenge_name = get_leaderboard(challenge_id)
                 print(f'leaderboard {leaderboard}')
                 # user_in_leaderboard = interaction.user.name in [entry[interaction.user.name] for entry in leaderboard]
                 user_in_leaderboard = has_user_answered_challenge(interaction.user.name, challenge_id=challenge_id)

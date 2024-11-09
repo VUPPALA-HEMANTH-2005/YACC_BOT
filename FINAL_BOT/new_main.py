@@ -12,8 +12,8 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 # 1286287432542847006
 # Define the permitted channels
-channels_permitted = {1290344770442629183}
-trail_channel = {1286287432542847006}
+channels_permitted = {1290344770442629183, 1286287432542847006}
+# channels_permitted = {1286287432542847006}
 
 # Create the bot instance with all intents
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
@@ -29,7 +29,7 @@ async def on_ready():
 #
 @bot.tree.command(name='whatscooking', description='first free flag')
 async def whatscooking(interaction: discord.Interaction):
-    if (interaction.channel.id not in channels_permitted) and (interaction.channel.id not in trail_channel):
+    if interaction.channel.id not in channels_permitted:
         # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
@@ -46,7 +46,7 @@ async def whatscooking(interaction: discord.Interaction):
 # Slash command for /help
 @bot.tree.command(name='help', description='Displays available commands')
 async def help_command(interaction: discord.Interaction):
-    if (interaction.channel.id not in channels_permitted) and (interaction.channel.id not in trail_channel):
+    if interaction.channel.id not in channels_permitted:
         # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
@@ -71,7 +71,7 @@ async def help_command(interaction: discord.Interaction):
 # Slash command for overall leaderboard
 @bot.tree.command(name='leaderboard', description='Display the overall leaderboard')
 async def leaderboard(interaction: discord.Interaction):
-    if interaction.channel.id not in trail_channel:
+    if interaction.channel.id not in channels_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -86,7 +86,7 @@ async def myhacks_command(interaction: discord.Interaction):
     # user = interaction.user.name
     # Assuming handle_myhacks_command is already defined in new_responses.py
     # Check if the channel is permitted
-    if interaction.channel.id not in trail_channel:
+    if interaction.channel.id not in channels_permitted:
         # await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
@@ -99,7 +99,7 @@ async def myhacks_command(interaction: discord.Interaction):
 # Slash command for specific challenge leaderboard
 @bot.tree.command(name='challengeleaderboard', description='Display leaderboard for a specific challenge')
 async def challenge_leaderboard(interaction: discord.Interaction, flag_id: str):
-    if interaction.channel.id not in trail_channel:
+    if interaction.channel.id not in channels_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -112,7 +112,7 @@ async def challenge_leaderboard(interaction: discord.Interaction, flag_id: str):
 # Slash command for the user's individual score
 @bot.tree.command(name='myscore', description='Get your individual score')
 async def my_score(interaction: discord.Interaction):
-    if interaction.channel.id not in trail_channel:
+    if interaction.channel.id not in channels_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -125,7 +125,7 @@ async def my_score(interaction: discord.Interaction):
 # Slash command for listing all active challenges
 @bot.tree.command(name='challenges', description='Get the list of active challenges')
 async def challenges(interaction: discord.Interaction):
-    if interaction.channel.id not in trail_channel:
+    if interaction.channel.id not in channels_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
 
@@ -137,7 +137,7 @@ async def challenges(interaction: discord.Interaction):
 
 @bot.tree.command(name='info', description='Exclusive information regarding a question')
 async def challenge_info(interaction: discord.Interaction, flag_id: str):
-    if interaction.channel.id not in trail_channel:
+    if interaction.channel.id not in channels_permitted:
         await interaction.response.send_message("This channel is not permitted.", ephemeral=True)
         return
     try:
@@ -155,11 +155,10 @@ async def challenge_info(interaction: discord.Interaction, flag_id: str):
         return
 
 
-
 @bot.tree.command(name='submit', description='Submit a flag for a challenge')
 async def submit(interaction: discord.Interaction, flag_id: str):
     await interaction.response.defer(ephemeral=True)
-    if (interaction.channel.id not in trail_channel) and (interaction.channel.id not in channels_permitted):
+    if interaction.channel.id not in channels_permitted:
         await interaction.followup.send("This channel is not permitted.", ephemeral=True)
         return
     # Check if the channel is permitted
@@ -170,17 +169,20 @@ async def submit(interaction: discord.Interaction, flag_id: str):
 
     # Check if the challenge ID exists
     challenge_exists = get_response(interaction, challenge_id=flag_id, text="is_valid_challenge_id")
-    if challenge_exists == "Invalid challenge ID.":
+    if challenge_exists == "Invalid flag ID.":
         # Respond immediately if the flag_id is invalid
         # await interaction.response.send_message("Invalid challenge ID. Please check and try again.", ephemeral=True)
-        await interaction.followup.send("Invalid challenge ID. Please check and try again.", ephemeral=True)
+        await interaction.followup.send("Invalid flag ID. Please check and try again.", ephemeral=True)
         return
     elif challenge_exists == "status is closed.":
         status_closed = f"⚠️ Sorry, {interaction.user.name}, but this challenge is currently closed for submissions."
         # await interaction.response.send_message(status_closed, ephemeral=True)
         await interaction.followup.send(status_closed, ephemeral=True)
         return
-
+    did_already_submitted = get_response(interaction, challenge_id=flag_id, text='did_already_submitted')
+    if did_already_submitted == 'True':
+        await interaction.followup.send("You've already guessed this question correctly!", ephemeral=True)
+        return
     # If the challenge ID is valid, let the user know to check their DMs
     # await interaction.response.send_message("Check your DMs to submit the flag.", ephemeral=True)
     await interaction.followup.send("Check your DMs to submit the flag.", ephemeral=True)
@@ -204,7 +206,7 @@ async def submit(interaction: discord.Interaction, flag_id: str):
         print(response[0:8])
         if response[0:8] == "Congrats":
             announce_in_group = f"Congrats {interaction.user.name} for guessing the {flag_id} right! 🎉"
-            await interaction.followup.send(announce_in_group, ephemeral=True)
+            await interaction.followup.send(announce_in_group)
 
     except discord.Forbidden:
         # Handle if the bot cannot send a DM due to user privacy settings

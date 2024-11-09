@@ -20,25 +20,36 @@ def get_db_connection():
 
 
 def is_database_empty():
-    with get_db_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM users_table;")
-            count = cursor.fetchone()[0]
-            return count == 0  # Returns True if the table is empty
+    # with get_db_connection() as conn:
+    #     with conn.cursor() as cursor:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) FROM users_table;")
+        count = cursor.fetchone()[0]
+        return count == 0  # Returns True if the table is empty
+    except Exception as e:
+        print(f'an error occurred while checking the database is empty{e}')
+        return
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def is_valid_challenge_id(challenge_id: str) -> bool:
-    """
-    Checks if a given challenge_id exists in the challenges_table.
-    """
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM challenges_table WHERE challenge_id = %s", (challenge_id,))
-    result = cursor.fetchone()
-    exists = result is not None
-    cursor.close()
-    conn.close()
-    return exists
+    try:
+        cursor.execute("SELECT 1 FROM challenges_table WHERE challenge_id = %s", (challenge_id,))
+        result = cursor.fetchone()
+        exists = result is not None
+        return exists
+    except Exception as e:
+        print(f'an exception has occurred while checking challenge_id validity')
+        return False
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def is_user_in_leaderboard(user_name: str) -> bool:
@@ -62,6 +73,37 @@ def is_user_in_leaderboard(user_name: str) -> bool:
         return result is not None
 
     except Exception as e:
+        # conn.rollback()
+        print(f"An error occurred while checking the leaderboard: {e}")
+        return False
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def is_user_in_users_table(user_name: str) -> bool:
+    # Get a database connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Query to check if the user exists in the leaderboard_table
+        cursor.execute(
+            """
+            SELECT 1 FROM users_table
+            WHERE user_name = %s
+            """,
+            (user_name,)
+        )
+        # Fetch one result
+        result = cursor.fetchone()
+
+        # If result is found, user exists in the leaderboard
+        return result is not None
+
+    except Exception as e:
+        # conn.rollback()
         print(f"An error occurred while checking the leaderboard: {e}")
         return False
 
@@ -103,9 +145,9 @@ def calculate_score(challenge_id):
     print(f'score calculation starts')
     conn = get_db_connection()
     cursor = conn.cursor()
-    delta = 1
+    delta = 10
     try:
-        # Code for database operations
+        # Code for database operatio  ns
         cursor.execute("""
             SELECT max_points, time
             FROM challenges_table
@@ -125,16 +167,18 @@ def calculate_score(challenge_id):
 
         # Calculate time difference in seconds
         time_difference = (current_time - challenge_time).total_seconds()
-
+        time_difference = time_difference/86400
+        print(f'time difference {time_difference}')
         # Calculate the assigned score
-        assigned_score = max(max_score / 2, max_score - int(delta * time_difference))
+        assigned_score = max(max_score // 2, max_score - int((delta/100) * time_difference*max_score))
         print(f'score calculation ends')
-        return assigned_score
         conn.commit()
+        return assigned_score
 
     except Exception as e:
         print(f"An error occurred in calculate_score function: {e}")
         conn.rollback()  # Rollback if any error occurs
+        return 0
 
     finally:
         # Ensure cursor and connection are closed
@@ -159,8 +203,8 @@ def check_challenge_status(challenge_id):
         else:
             return 1
     except Exception as e:
-        conn.rollback()
-        return f"An error occurred: {e}"
+        # conn.rollback()
+        return f"An error occurred while checking the status of the challenge: {e}"
 
     finally:
         cursor.close()
@@ -219,21 +263,6 @@ def submit_flag(user_name: str, challenge_id: str, flag: str):
                     (challenge_id,)
                 )
 
-            # cursor.execute(
-            #     "SELECT COUNT(*) + 1 FROM leaderboard_table WHERE challenge_id = %s",
-            #     (challenge_id,)
-            # )
-            # submission_order = cursor.fetchone()[0]
-            #
-            # cursor.execute(
-            #     """
-            #     INSERT INTO leaderboard_table (challenge_id, user_name, submission_order, points)
-            #     VALUES (%s, %s, %s, %s)
-            #     """,
-            #     (challenge_id, user_name, submission_order, max_points)
-            # )
-
-            # Update user stats if correct and not answered the same question earlier
             max_points = calculate_score(challenge_id=challenge_id)
             if not has_user_answered_challenge(user_name=user_name, challenge_id=challenge_id):
                 cursor.execute(
@@ -319,6 +348,7 @@ def add_to_leaderboard(challenge_id: str, max_points: int, user_name: str):
 
     except Exception as e:
         conn.rollback()
+        print(f"Error adding to leaderboard: {e}")
         return f"Error adding to leaderboard: {e}"
 
     finally:
@@ -328,7 +358,7 @@ def add_to_leaderboard(challenge_id: str, max_points: int, user_name: str):
 
 def get_leaderboard(challenge_id: str):
     if not is_valid_challenge_id(challenge_id):
-        return "Invalid challenge ID."
+        return "Invalid challenge ID.", ''
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -344,19 +374,19 @@ def get_leaderboard(challenge_id: str):
         )
         leaderboard = cursor.fetchall()
         if not leaderboard:
-            return []
+            return [], ''
         else:
-            leaderboard_message = "🏆 SQL Injection Fun Challenge Leaderboard\n"
-        leaderboard_message += "─────────────────────────────\n"
+            cursor.execute(
+                """
+                SELECT name
+                FROM challenges_table
+                WHERE challenge_id = %s
+                """,
+                (challenge_id,)
+            )
+            challenge_name = cursor.fetchone()[0]
+            return leaderboard, challenge_name
 
-        for entry in leaderboard:
-            user_name = entry[0]  # Assuming user_name is in the first column
-            points = entry[1]     # Assuming points are in the second column
-            leaderboard_message += f"{user_name}     | 🏅 {points} pts\n"
-
-        leaderboard_message += "─────────────────────────────"
-
-        return leaderboard_message
     except Exception as e:
         return f'exception occurred in getting the leaderboard {e}'
     finally:
@@ -364,46 +394,90 @@ def get_leaderboard(challenge_id: str):
         conn.close()
 
 
-
 def get_overall_leaderboard():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT user_name, SUM(points) AS total_score
-        FROM leaderboard_table
-        GROUP BY user_name
-        ORDER BY total_score DESC
-        LIMIT 5
-        """
-    )
-    overall_leaderboard = cursor.fetchall()
-    conn.close()
-    return overall_leaderboard if overall_leaderboard else []
+    try:
+        cursor.execute(
+            """
+            SELECT user_name, SUM(points) AS total_score
+            FROM leaderboard_table
+            GROUP BY user_name
+            ORDER BY total_score DESC
+            LIMIT 5
+            """
+        )
+        overall_leaderboard = cursor.fetchall()
+        # print(overall_leaderboard)
+
+        if overall_leaderboard:
+            leaderboard_output = "🏆 CTF Challenge Leaderboard\n" + "─" * 29 + "\n"
+            i = 1
+            for user_name, total_score in overall_leaderboard:
+                leaderboard_output += f"{i}. {user_name} | 🏅 {total_score} pts\n"
+                i += 1
+            leaderboard_output += "─" * 29 + "\n"
+            return leaderboard_output
+        else:
+            return []
+            # return "LEADERBOARD\n" + "─" * 29 + "\nNo data available\n" + "─" * 29 + "\n
+    except Exception as e:
+        # conn.rollback()
+        print(f"Error getting user score: {e}")
+        return f"Error getting user score: {e}"
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def get_user_score(user_name: str):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute(
-            "SELECT SUM(points),correct_submissions, incorrect_submission FROM leaderboard_table WHERE user_name = %s", (user_name,)
-        )
-        # total_score = cursor.fetchone()[0] or 0
-        total_score, crt_sub, incrt_sub = cursor.fetchone()
-        response = score_report = (
-                f"🌟 [Username] Score Report 🌟\n"
-                "─────────────────────────────\n"
-                f"Participant:{user_name} "
-                f"Total Points: {total_score} pts! 🎉\n"
-                f"Correct Flags: {crt_sub} 🔥\n"
-                f"Incorrect Flags: {incrt_sub} 🤦‍️\n\n"
-                "Get ready to level up! and Keep those flags coming! ✨\n"
-                "─────────────────────────────"
+        total_score = 0
+        user_rank = "unranked"
+
+        # Check if the user is in the leaderboard
+        if is_user_in_leaderboard(user_name):
+            # Retrieve the leaderboard and calculate rank and score for the user
+            cursor.execute(
+                """
+                SELECT user_name, SUM(points) AS total_score
+                FROM leaderboard_table
+                GROUP BY user_name
+                ORDER BY total_score DESC
+                """
             )
-        return response
+            leaderboard = cursor.fetchall()
+            print(leaderboard)
+            # Find the user's total_score and rank in the ordered leaderboard
+            for i, (name, score) in enumerate(leaderboard, start=1):
+                if name == user_name:
+                    total_score = score
+                    user_rank = i
+                    break
+        if is_user_in_users_table(user_name):
+            cursor.execute(
+                "SELECT correct_submissions, incorrect_submissions FROM users_table WHERE user_name = %s", (user_name,)
+            )
+            # total_score = cursor.fetchone()[0] or 0
+            crt_sub, incrt_sub = cursor.fetchone()
+            response = (
+                    f"🌟 [{user_name}] Score Report 🌟\n"
+                    "─────────────────────────────\n"
+                    f"Participant:{user_name} \n"
+                    f"Total Points: {total_score} pts! 🎉\n"
+                    f"Correct Flags: {crt_sub} 🔥\n"
+                    f"Incorrect Flags: {incrt_sub} 🤦‍️\n"
+                    f"Current Rank: {user_rank} \n"
+                    "Get ready to level up! and Keep those flags coming! ✨\n"
+                    "─────────────────────────────"
+                )
+            return response
+        else:
+            return f"{user_name} you did not make any submissions yet"
     except Exception as e:
-        conn.rollback()
+        # conn.rollback()
         return f"Error getting user score: {e}"
     finally:
         cursor.close()
@@ -421,7 +495,7 @@ def get_challenge_info(challenge_id: str):
         """
         SELECT c.challenge_id, c.name, c.max_points,
                CASE WHEN c.status = 1 THEN 'Open' ELSE 'Closed' END AS status,
-               c.difficulty, c.description, c.file_link, c.hints_visible,
+               c.description, c.file_link, c.hints_visible,
                SUM(CASE WHEN s.verdict = TRUE THEN 1 ELSE 0 END) AS correct_submissions,
                COUNT(s.id) AS total_submissions
         FROM challenges_table c
@@ -437,7 +511,7 @@ def get_challenge_info(challenge_id: str):
     if not challenge_info:
         return "Challenge not found."
 
-    challenge_id, name, max_points, status, difficulty, description, file_link, hints_visible, correct_subs, total_subs = challenge_info
+    challenge_id, name, max_points, status , description, file_link, hints_visible, correct_subs, total_subs = challenge_info
 
     if status == 'Closed':
         return "This challenge is currently closed."
@@ -452,9 +526,7 @@ def get_challenge_info(challenge_id: str):
         "─────────────────────────────",
         f"🆔 ID: {challenge_id}",
         f"📝 Name: {name}",
-        f"🏅 Points: {max_points} pts",
-        f"🎯 Difficulty: {difficulty}",
-        "⏳ Time Limit: None",
+        f"🏅 Max Points: {max_points} pts",
         "",
         "📜 Description:",
         f"  {description}",
@@ -485,16 +557,17 @@ def get_all_challenges():
 
     if not challenges:
         return "No challenges are currently available."
-
+    challenges_file = 'https://tinyurl.com/Hackweekmysteries'
     formatted_challenges = ["📜 CTF Challenges Available", "─────────────────────────────"]
+    formatted_challenges.extend([f"Challenges File : {challenges_file}"])
     for name, challenge_id, max_points in challenges:
         formatted_challenges.extend([
             f"{name}",
             f"   🆔 ID: {challenge_id}",
-            f"   🏅 Points: {max_points} pts",
+            f"   🏅 Max Points: {max_points} pts",
             ""
         ])
-    formatted_challenges.append("─────────────────────────────\n⚠️ More challenges will be unlocked as teams progress!")
+    formatted_challenges.append("─────────────────────────────\n")
 
     return '\n'.join(formatted_challenges)
 
